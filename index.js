@@ -6,31 +6,23 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
+
 // ⚡ Universele CORS middleware
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*'); // ✅ Belangrijk
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   next();
 });
+
 const TMDB = new MovieDb(process.env.TMDB_API_KEY);
 
 // ---------- MANIFEST ----------
-const manifest = {
-  id: "org.stremio.tmdb.trailers",
-  version: "1.0.0",
-  name: "TMDB Trailers",
-  description: "Adds official TMDB trailers to Stremio titles",
-  types: ["movie", "series"],
-  resources: ["meta"],
-  idPrefixes: ["tt", "tmdb", "movie", "series"],
-  catalogs: []
-};
-
-const builder = new addonBuilder(manifest);
+import manifestData from './manifest.json' assert { type: "json" };
+const builder = new addonBuilder(manifestData);
 
 // ---------- CACHE ----------
-const trailerCache = new Map(); // key: type:id, value: meta
+const trailerCache = new Map();
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 uur
 
 // ---------- META HANDLER ----------
@@ -66,7 +58,6 @@ builder.defineMetaHandler(async ({ type, id }) => {
         throw new Error(`No TMDB match found for IMDb ID: ${imdbId}`);
       }
     } else {
-      // Numeriek ID gebruiken
       tmdbId = id.replace(/[^0-9]/g, '');
     }
 
@@ -107,13 +98,11 @@ builder.defineMetaHandler(async ({ type, id }) => {
 const addonInterface = builder.getInterface();
 
 // ---------- EXPRESS ROUTES ----------
-// Manifest route
 app.get('/manifest.json', (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.json(addonInterface.manifest);
 });
 
-// Meta route
 app.get('/meta/:type/:id.json', async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   try {
