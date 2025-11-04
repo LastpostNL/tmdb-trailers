@@ -8,6 +8,14 @@ dotenv.config();
 const app = express();
 const TMDB = new MovieDb(process.env.TMDB_API_KEY);
 
+// 🌐 CORS headers toevoegen
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*"); // Sta alle origins toe
+  res.header("Access-Control-Allow-Methods", "GET,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  next();
+});
+
 const manifest = {
   id: "org.stremio.tmdb.trailers",
   version: "1.0.0",
@@ -84,7 +92,6 @@ builder.defineMetaHandler(async ({ type, id }) => {
     setTimeout(() => trailerCache.delete(cacheKey), 6 * 60 * 60 * 1000);
 
     console.log(`🎥 Trailer cached for ${id} (tmdb:${tmdbId})`);
-
     return { meta };
   } catch (err) {
     console.error('Trailer error:', err.message);
