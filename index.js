@@ -8,14 +8,15 @@ dotenv.config();
 const app = express();
 const TMDB = new MovieDb(process.env.TMDB_API_KEY);
 
-// 🌐 CORS headers toevoegen
+// ✅ CORS headers
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*"); // Sta alle origins toe
+  res.header("Access-Control-Allow-Origin", "*"); 
   res.header("Access-Control-Allow-Methods", "GET,OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type");
   next();
 });
 
+// 📝 Addon manifest
 const manifest = {
   id: "org.stremio.tmdb.trailers",
   version: "1.0.0",
@@ -67,16 +68,23 @@ builder.defineMetaHandler(async ({ type, id }) => {
       tmdbId = id.replace(/[^0-9]/g, '');
     }
 
-    // 🎬 Trailer ophalen
+    // 🎬 Trailer ophalen via TMDb
     const videos = type === 'series'
       ? await TMDB.tvVideos({ id: tmdbId })
       : await TMDB.movieVideos({ id: tmdbId });
 
     const trailerObj = videos.results?.find(v => v.type === 'Trailer' && v.site === 'YouTube');
 
+    // 🧩 Stremio velden
     const trailerStreams = trailerObj ? [{
-      title: `Official Trailer`,
+      title: "Official Trailer",
       ytId: trailerObj.key,
+      lang: "en"
+    }] : [];
+
+    const trailers = trailerObj ? [{
+      title: "Official Trailer",
+      url: `https://www.youtube.com/watch?v=${trailerObj.key}`,
       lang: "en"
     }] : [];
 
@@ -84,14 +92,16 @@ builder.defineMetaHandler(async ({ type, id }) => {
       id,
       type,
       name: type === 'movie' ? `Movie ${id}` : `Series ${id}`,
-      trailerStreams
+      trailerStreams,
+      trailers
     };
 
-    // 🧠 Cache opslaan met TTL van 6 uur
+    // 🧠 Cache opslaan met TTL 6 uur
     trailerCache.set(cacheKey, meta);
     setTimeout(() => trailerCache.delete(cacheKey), 6 * 60 * 60 * 1000);
 
     console.log(`🎥 Trailer cached for ${id} (tmdb:${tmdbId})`);
+
     return { meta };
   } catch (err) {
     console.error('Trailer error:', err.message);
@@ -101,7 +111,7 @@ builder.defineMetaHandler(async ({ type, id }) => {
 
 const addonInterface = builder.getInterface();
 
-// Express endpoints
+// ✅ Express endpoints
 app.get('/:resource/:type/:id.json', (req, res) => {
   addonInterface
     .get(req.params.resource, req.params.type, req.params.id)
@@ -113,6 +123,7 @@ app.get('/manifest.json', (req, res) => {
   res.json(addonInterface.manifest);
 });
 
+// 🚀 Server starten
 const PORT = process.env.PORT || 7000;
 app.listen(PORT, () => {
   console.log(`✅ TMDB Trailer Addon running at http://localhost:${PORT}/manifest.json`);
