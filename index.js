@@ -6,6 +6,13 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
+// ⚡ Universele CORS middleware
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*'); // ✅ Belangrijk
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
 const TMDB = new MovieDb(process.env.TMDB_API_KEY);
 
 // ---------- MANIFEST ----------
@@ -102,14 +109,12 @@ const addonInterface = builder.getInterface();
 // ---------- EXPRESS ROUTES ----------
 // Manifest route
 app.get('/manifest.json', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/json');
   res.json(addonInterface.manifest);
 });
 
 // Meta route
 app.get('/meta/:type/:id.json', async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/json');
   try {
     const resp = await addonInterface.get('meta', req.params.type, req.params.id);
