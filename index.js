@@ -1,13 +1,14 @@
 import express from 'express';
 import { addonBuilder } from 'stremio-addon-sdk';
-import { MovieDb } from 'moviedb-promise'; // ✅ named import
+import { MovieDb } from 'moviedb-promise';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const app = express();
-const TMDB = new MovieDb(process.env.TMDB_API_KEY); // ✅ constructor gebruiken
+const TMDB = new MovieDb(process.env.TMDB_API_KEY);
 
+// ---------- MANIFEST ----------
 const manifest = {
   id: "org.stremio.tmdb.trailers",
   version: "1.0.0",
@@ -21,23 +22,22 @@ const manifest = {
 
 const builder = new addonBuilder(manifest);
 
-// 🚀 Caching map
-const trailerCache = new Map();
+// ---------- CACHE ----------
+const trailerCache = new Map(); // key: type:id, value: meta
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 uur
 
+// ---------- META HANDLER ----------
 builder.defineMetaHandler(async ({ type, id }) => {
   try {
-    // 🔑 Cache key — IMDb of TMDB id
     const cacheKey = `${type}:${id}`;
     if (trailerCache.has(cacheKey)) {
-      // ✅ Cache hit
-      const cached = trailerCache.get(cacheKey);
       console.log(`⚡ Cache hit for ${id}`);
-      return { meta: cached };
+      return { meta: trailerCache.get(cacheKey) };
     }
 
     let tmdbId;
 
-    // 🎯 1. IMDb → TMDB lookup
+    // ----- IMDb-ID naar TMDb-ID -----
     if (id.startsWith('tt')) {
       const imdbId = id.trim();
       const found = await TMDB.find({ id: imdbId, external_source: 'imdb_id' });
@@ -59,10 +59,11 @@ builder.defineMetaHandler(async ({ type, id }) => {
         throw new Error(`No TMDB match found for IMDb ID: ${imdbId}`);
       }
     } else {
+      // Numeriek ID gebruiken
       tmdbId = id.replace(/[^0-9]/g, '');
     }
 
-    // 🎬 2. Trailer ophalen
+    // ----- Trailer ophalen -----
     const videos = type === 'series'
       ? await TMDB.tvVideos({ id: tmdbId })
       : await TMDB.movieVideos({ id: tmdbId });
@@ -82,13 +83,14 @@ builder.defineMetaHandler(async ({ type, id }) => {
       trailer
     };
 
-    // 🧠 3. In cache opslaan (met TTL van 6 uur)
+    // ----- Cache opslaan -----
     trailerCache.set(cacheKey, meta);
-    setTimeout(() => trailerCache.delete(cacheKey), 6 * 60 * 60 * 1000);
+    setTimeout(() => trailerCache.delete(cacheKey), CACHE_TTL_MS);
 
     console.log(`🎥 Trailer cached for ${id} (tmdb:${tmdbId})`);
 
     return { meta };
+
   } catch (err) {
     console.error('Trailer error:', err.message);
     return { meta: null };
@@ -97,19 +99,29 @@ builder.defineMetaHandler(async ({ type, id }) => {
 
 const addonInterface = builder.getInterface();
 
-// ✅ Nieuwe manier voor Express integratie:
-app.get('/:resource/:type/:id.json', (req, res) => {
-  addonInterface
-    .get(req.params.resource, req.params.type, req.params.id)
-    .then(resp => res.json(resp))
-    .catch(err => res.status(500).json({ err: err.message }));
-});
-
+// ---------- EXPRESS ROUTES ----------
+// Manifest route
 app.get('/manifest.json', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Content-Type', 'application/json');
   res.json(addonInterface.manifest);
 });
 
-const PORT = 7000;
+// Meta route
+app.get('/meta/:type/:id.json', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Content-Type', 'application/json');
+  try {
+    const resp = await addonInterface.get('meta', req.params.type, req.params.id);
+    res.json(resp);
+  } catch (err) {
+    res.status(500).json({ err: err.message });
+  }
+});
+
+// ---------- SERVER START ----------
+const PORT = process.env.PORT || 7000;
 app.listen(PORT, () => {
-  console.log(`✅ TMDB Trailer Addon running at http://localhost:${PORT}/manifest.json`);
+  console.log(`✅ TMDB Trailer Addon running at port ${PORT}`);
+  console.log(`🔗 Manifest: http://localhost:${PORT}/manifest.json (use your Render URL in production)`);
 });
