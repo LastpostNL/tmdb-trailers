@@ -1,0 +1,10 @@
+{
+  "id": "org.stremio.tmdb.trailers",
+  "version": "1.0.0",
+  "name": "TMDb Trailers",
+  "description": "Provides official TMDb trailers for movies and series",
+  "types": ["movie", "series"],
+  "resources": ["meta"],
+  "idPrefixes": ["tt", "tmdb", "movie", "series"],
+  "catalogs": []
+}

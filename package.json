@@ -1,0 +1,16 @@
+{
+  "name": "stremio-tmdb-trailer-addon",
+  "version": "1.0.0",
+  "description": "Stremio addon that provides trailers from TMDB",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "stremio-addon-sdk": "^1.5.0",
+    "moviedb-promise": "^3.1.1",
+    "dotenv": "^16.4.5"
+  }
+}
