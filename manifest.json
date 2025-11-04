@@ -1,10 +1,13 @@
 {
   "id": "org.stremio.tmdb.trailers",
   "version": "1.0.0",
-  "name": "TMDb Trailers",
-  "description": "Provides official TMDb trailers for movies and series",
-  "types": ["movie", "series"],
+  "name": "TMDB Trailers",
+  "description": "Adds official TMDB trailers to Stremio titles",
+  "types": ["movie","series"],
   "resources": ["meta"],
-  "idPrefixes": ["tt", "tmdb", "movie", "series"],
-  "catalogs": []
+  "idPrefixes": ["tt","tmdb","movie","series"],
+  "catalogs": [],
+  "behaviorHints": {
+    "metaPriority": 100
+  }
 }
